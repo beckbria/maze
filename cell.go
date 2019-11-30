@@ -42,6 +42,9 @@ func (c *Cell) UnlinkOneWay(neighbor *Cell) {
 
 // Linked returns true if a cell is linked to another
 func (c *Cell) Linked(neighbor *Cell) bool {
+	if neighbor == nil {
+		return false
+	}
 	linked, ok := c.links[neighbor]
 	return ok && linked
 }
