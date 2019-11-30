@@ -10,60 +10,82 @@ const (
 	debug = false
 )
 
-// Grid represents a rectangular maze grid
-type Grid struct {
+// Grid represents a maze grid
+type Grid interface {
+	RowCount() int64
+	ColumnCount() int64
+	At(row, column int64) *Cell
+	AllRows() <-chan []*Cell
+	AllCells() <-chan *Cell
+	RandomCell() *Cell
+	Size() int64
+	ToString() string
+}
+
+// RectangleGrid represents a rectangular maze grid
+type RectangleGrid struct {
 	// Rows and Columns indicate the size of the grid
-	Rows, Columns int64
+	rows, columns int64
 	// The cells in the grid
-	grid [][]*Cell
+	grid [][]*RectangleCell
 }
 
 // NewGrid creates a new rectangular grid with all cells connected to their neighbors
-func NewGrid(rows, columns int64) Grid {
+func NewGrid(rows, columns int64) RectangleGrid {
 	if rows < 0 || columns < 0 {
 		log.Fatalf("Grid dimensions invalid: [%d, %d]", rows, columns)
 	}
-	g := Grid{
-		Rows:    rows,
-		Columns: columns,
-		grid:    make([][]*Cell, rows)}
+	g := RectangleGrid{
+		rows:    rows,
+		columns: columns,
+		grid:    make([][]*RectangleCell, rows)}
 	g.prepareGrid()
 	g.configureCells()
 	return g
 }
 
+// RowCount returns the number of rows in the grid
+func (g *RectangleGrid) RowCount() int64 {
+	return g.rows
+}
+
+// ColumnCount returns the number of columns in the grid
+func (g *RectangleGrid) ColumnCount() int64 {
+	return g.columns
+}
+
 // At accesses a cell from the grid
-func (g *Grid) At(row, column int64) *Cell {
-	if row < 0 || column < 0 || row >= g.Rows || column >= g.Columns {
+func (g *RectangleGrid) At(row, column int64) *RectangleCell {
+	if row < 0 || column < 0 || row >= g.rows || column >= g.columns {
 		return nil
 	}
 	return g.grid[row][column]
 }
 
 // prepareGrid creates the cells in the grid
-func (g *Grid) prepareGrid() {
-	for r := int64(0); r < g.Rows; r++ {
-		g.grid[r] = make([]*Cell, g.Columns)
-		for c := int64(0); c < g.Columns; c++ {
-			cell := NewCell(r, c)
+func (g *RectangleGrid) prepareGrid() {
+	for r := int64(0); r < g.rows; r++ {
+		g.grid[r] = make([]*RectangleCell, g.columns)
+		for c := int64(0); c < g.columns; c++ {
+			cell := NewRectangleCell(r, c)
 			g.grid[r][c] = &cell
 		}
 	}
 }
 
 // configureCells establishes links between cells and their neighbors
-func (g *Grid) configureCells() {
+func (g *RectangleGrid) configureCells() {
 	for cell := range g.AllCells() {
-		cell.North = g.At(cell.Row-1, cell.Column)
-		cell.South = g.At(cell.Row+1, cell.Column)
-		cell.West = g.At(cell.Row, cell.Column-1)
-		cell.East = g.At(cell.Row, cell.Column+1)
+		cell.North = g.At(cell.Row()-1, cell.Column())
+		cell.South = g.At(cell.Row()+1, cell.Column())
+		cell.West = g.At(cell.Row(), cell.Column()-1)
+		cell.East = g.At(cell.Row(), cell.Column()+1)
 	}
 }
 
 // AllRows returns a row of cells in the grid at a time
-func (g *Grid) AllRows() <-chan []*Cell {
-	c := make(chan []*Cell)
+func (g *RectangleGrid) AllRows() <-chan []*RectangleCell {
+	c := make(chan []*RectangleCell)
 	go func() {
 		for _, row := range g.grid {
 			c <- row
@@ -74,8 +96,8 @@ func (g *Grid) AllRows() <-chan []*Cell {
 }
 
 // AllCells iterates over all of the cells in the grid
-func (g *Grid) AllCells() <-chan *Cell {
-	c := make(chan *Cell)
+func (g *RectangleGrid) AllCells() <-chan *RectangleCell {
+	c := make(chan *RectangleCell)
 	go func() {
 		for _, row := range g.grid {
 			for _, cell := range row {
@@ -88,13 +110,13 @@ func (g *Grid) AllCells() <-chan *Cell {
 }
 
 // RandomCell returns a random cell from the grid
-func (g *Grid) RandomCell() *Cell {
-	return g.At(rand.Int63n(g.Rows), rand.Int63n(g.Columns))
+func (g *RectangleGrid) RandomCell() *RectangleCell {
+	return g.At(rand.Int63n(g.rows), rand.Int63n(g.columns))
 }
 
 // Size returns the number of cells in the grid
-func (g *Grid) Size() int64 {
-	return g.Rows * g.Columns
+func (g *RectangleGrid) Size() int64 {
+	return g.rows * g.columns
 }
 
 // Unicode light box drawing characters
@@ -113,12 +135,12 @@ const (
 )
 
 // ToString creates a textual representation of the maze grid
-func (g *Grid) ToString() string {
+func (g *RectangleGrid) ToString() string {
 	return g.toString(3, 1)
 }
 
 // toString creates a textual representation of the maze grid
-func (g *Grid) toString(horizontalSize, verticalSize int) string {
+func (g *RectangleGrid) toString(horizontalSize, verticalSize int) string {
 	if (horizontalSize < 1) || (verticalSize < 1) {
 		log.Fatalf("Invalid grid size for toString: [%d, %d]", horizontalSize, verticalSize)
 	}
@@ -134,12 +156,12 @@ func (g *Grid) toString(horizontalSize, verticalSize int) string {
 	}
 
 	// Render all of the cells.  Loop inclusive of the column count to get the bottom edge
-	for r := int64(0); r <= g.Rows; r++ {
+	for r := int64(0); r <= g.rows; r++ {
 		// Generate the representation of this row
 		topEdge := "" // The horizontal lines between cells
 		area := ""    // The contents of the cells
 		// Loop inclusive of the column count to get the right edge
-		for c := int64(0); c <= g.Columns; c++ {
+		for c := int64(0); c <= g.columns; c++ {
 			cell := g.At(r, c)
 			if debug {
 				fmt.Printf("\tC[%d,%d]: {", r, c)
@@ -190,7 +212,7 @@ func (g *Grid) toString(horizontalSize, verticalSize int) string {
 
 		// Append this row to the complete output
 		output = output + topEdge + "\n"
-		if r < g.Rows {
+		if r < g.rows {
 			for i := 0; i < verticalSize; i++ {
 				output = output + area + "\n"
 			}
@@ -202,7 +224,7 @@ func (g *Grid) toString(horizontalSize, verticalSize int) string {
 
 // upperLeftCornerGlyph returns the glyph which should be shown at the
 // upper-left corner of a cell
-func (g *Grid) upperLeftCornerGlyph(row, column int64) rune {
+func (g *RectangleGrid) upperLeftCornerGlyph(row, column int64) rune {
 	// We care about four cells.  Those cells are located (relative to this glyph)
 	// to the upper-left, upper-right, lower-left, and lower-right.  The row and
 	// column parameters correspond to the cell to the lower-right of the glyph

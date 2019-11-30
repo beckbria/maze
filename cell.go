@@ -1,47 +1,75 @@
 package maze
 
-// Cell represents a cell in a rectangular maze
-type Cell struct {
-	// The location of this cell in the Grid
-	Row, Column int64
-	// The immediate neighbors of this cell
-	North, South, East, West *Cell
-	// A set of cells direclty linked to this cell
-	links map[*Cell]bool
+// Cell represents a cell in a maze grid
+type Cell interface {
+	// Row returns the index of the row where the cell is located
+	Row() int64
+	// Column returns the index of the column where the cell is located
+	Column() int64
+	// Link links one cell to another bidirectionally
+	Link(neighbor Cell)
+	// LinkOneWay links one cell to another unidirectionally
+	LinkOneWay(neighbor Cell)
+	// Unlink removes the bidirectional link between two cells
+	Unlink(neighbor Cell)
+	// UnlinkOneWay removes the unidirectional link between a cell and its neighbor
+	UnlinkOneWay(neighbor Cell)
+	// Linked returns true if a cell is linked to another
+	Linked(neighbor Cell) bool
+	// Neighbors returns the list of direct neighbors of this cell
+	Neighbors() []Cell
 }
 
-func NewCell(row, column int64) Cell {
-	c := Cell{
-		Row:    row,
-		Column: column,
-		links:  make(map[*Cell]bool)}
+// CellBase implements the linking behavior common to all cells
+type CellBase struct {
+	// The location of this cell in the Grid
+	row, column int64
+	// A set of cells direclty linked to this cell
+	links map[Cell]bool
+}
+
+func newCellBase(row, column int64) CellBase {
+	c := CellBase{
+		row:    row,
+		column: column,
+		links:  make(map[Cell]bool)}
 	return c
 }
 
+// Row returns the index of the row where the cell is located
+func (c *CellBase) Row() int64 {
+	return c.row
+}
+
+// Column returns the index of the column where the cell is located
+func (c *CellBase) Column() int64 {
+	return c.column
+}
+
 // LinkOneWay links one cell to another unidirectionally
-func (c *Cell) LinkOneWay(neighbor *Cell) {
+func (c *CellBase) LinkOneWay(neighbor Cell) {
 	c.links[neighbor] = true
 }
 
 // Link links one cell to another bidirectionally
-func (c *Cell) Link(neighbor *Cell) {
+func (c *CellBase) Link(neighbor Cell) {
 	c.LinkOneWay(neighbor)
 	neighbor.LinkOneWay(c)
 }
 
 // Unlink removes the bidirectional link between two cells
-func (c *Cell) Unlink(neighbor *Cell) {
+func (c *CellBase) Unlink(neighbor Cell) {
 	c.UnlinkOneWay(neighbor)
 	neighbor.UnlinkOneWay(c)
 }
 
 // UnlinkOneWay removes the unidirectional link between a cell and its neighbor
-func (c *Cell) UnlinkOneWay(neighbor *Cell) {
+func (c *CellBase) UnlinkOneWay(neighbor Cell) {
 	delete(c.links, neighbor)
 }
 
 // Linked returns true if a cell is linked to another
-func (c *Cell) Linked(neighbor *Cell) bool {
+func (c *CellBase) Linked(neighbor Cell) bool {
 	if neighbor == nil {
 		return false
 	}
@@ -50,12 +78,6 @@ func (c *Cell) Linked(neighbor *Cell) bool {
 }
 
 // Neighbors returns the list of direct neighbors of this cell
-func (c *Cell) Neighbors() []*Cell {
-	ret := []*Cell{}
-	for _, n := range []*Cell{c.North, c.South, c.East, c.West} {
-		if n != nil {
-			ret = append(ret, n)
-		}
-	}
-	return ret
+func (c *CellBase) Neighbors() []Cell {
+	return []Cell{}
 }

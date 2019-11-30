@@ -6,9 +6,9 @@ import (
 
 // BinaryTree uses the binary tree maze creation algorithm to create a maze in a
 // rectangular grid
-func BinaryTree(g *Grid) {
+func BinaryTree(g *RectangleGrid) {
 	for cell := range(g.AllCells()) {
-		neighbors := []*Cell{}
+		neighbors := []Cell{}
 		// Each cell should be randomly linked to either its east or north neighbor
 		if (cell.North != nil) {
 			neighbors = append(neighbors, cell.North)
