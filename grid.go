@@ -3,7 +3,6 @@ package maze
 import (
 	"log"
 	"math/rand"
-	"time"
 )
 
 // Grid represents a rectangular maze grid
@@ -85,7 +84,6 @@ func (g *Grid) AllCells() <-chan *Cell {
 
 // RandomCell returns a random cell from the grid
 func (g *Grid) RandomCell() *Cell {
-	rand.Seed(time.Now().UnixNano())
 	return g.At(rand.Int63n(g.Rows), rand.Int63n(g.Columns))
 }
 
